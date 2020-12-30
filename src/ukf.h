@@ -3,6 +3,7 @@
 
 #include "Eigen/Dense"
 #include "measurement_package.h"
+#include <iostream>
 
 class UKF {
  public:
@@ -40,6 +41,10 @@ class UKF {
    * @param meas_package The measurement at k+1
    */
   void UpdateRadar(MeasurementPackage meas_package);
+
+  void GenerateSigmaPoints(Eigen::MatrixXd& Xsig_out);
+  void SigmaPointPrediction(Eigen::MatrixXd& Xsig_out, double delta_t, Eigen::MatrixXd& Xsig_aug_);
+  void PredictMeanAndCovariance();
 
 
   // initially set to false, set to true in first call of ProcessMeasurement
@@ -95,6 +100,19 @@ class UKF {
 
   // Sigma point spreading parameter
   double lambda_;
+
+  // Laser measurement covariance matrix
+  Eigen::MatrixXd R_laser_;
+
+  // Radar measurement covariance matrix
+  Eigen::MatrixXd R_radar_;
+
+  // Process noise covariance matrix
+  Eigen::MatrixXd Q_;
+
+  // Laser state transition matrix
+  Eigen::MatrixXd H_laser_;
+
 };
 
 #endif  // UKF_H
