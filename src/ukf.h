@@ -89,6 +89,9 @@ class UKF {
   // Radar measurement noise standard deviation radius change in m/s
   double std_radrd_ ;
 
+  // Identity matrix for linear kalman measurement update
+  Eigen::MatrixXd I_laser_;
+
   // Weights of sigma points
   Eigen::VectorXd weights_;
 

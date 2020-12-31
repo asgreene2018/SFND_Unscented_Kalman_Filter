@@ -24,10 +24,10 @@ UKF::UKF() {
   P_ = MatrixXd::Identity(n_x_, n_x_);
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 5;
+  std_a_ = 1.0;
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 5;
+  std_yawdd_ = 0.8;
   
   /**
    * DO NOT MODIFY measurement noise values below.
@@ -78,7 +78,9 @@ UKF::UKF() {
   Q_ = MatrixXd(2, 2);
   Q_ << std_a_*std_a_, 0,
         0, std_yawdd_*std_yawdd_;
-  
+
+  // Identity matrix for lidar kalman update
+  I_laser_ = MatrixXd::Identity(5, 5);
 
   // Augmented state dimension
   n_aug_ = n_x_ + 2;
@@ -301,65 +303,24 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
    * You can also calculate the lidar NIS, if desired.
    */
 
-  // Set measurement dimension
-  int n_z = 2;
+  // Get position measurements
+  MatrixXd z(2,1);
+  z << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1];
 
-  // Convert sigma point into laser measurements
-  MatrixXd zSig = H_laser_*Xsig_pred_;
-
-  // Calculate measurement mean
-  VectorXd zPred = zSig * weights_;
-
-  // Calcuate measurement covariance
-  MatrixXd S = MatrixXd::Zero(n_z, n_z);
-  for(int i = 0; i < 2*n_aug_ + 1; i++)
-  {
-    VectorXd zDiff = zSig.col(i) - zPred;
-
-    while(zDiff(1) > M_PI)
-      zDiff(1) -= 2.0*M_PI;
-    while(zDiff(1) < -M_PI)
-      zDiff(1) += 2.0*M_PI;
-
-    S += weights_(i) * zDiff * zDiff.transpose();
-
-  }
-
-  S = S + R_laser_;
-
-  // Calculate cross correlation matrix
-  MatrixXd T = MatrixXd::Zero(n_x_, n_z);
-  for(int i = 0; i < 2*n_aug_+1; i++)
-  {
-    VectorXd zDiff = zSig.col(i) - zPred;
-    while(zDiff(1) > M_PI)
-      zDiff(1) -= 2.0*M_PI;
-    while(zDiff(1) < -M_PI)
-      zDiff(1) += 2.0*M_PI;
-    
-    VectorXd xDiff = Xsig_pred_.col(i) - x_;
-    while(xDiff(3) > M_PI)
-      xDiff(3) -= 2.0*M_PI;
-    while(xDiff(3) < -M_PI)
-      xDiff(3) += 2.0*M_PI;
-    
-    T = T + weights_(i) * xDiff * zDiff.transpose();
-  }
+  // Get residual from predictions to measurements
+  MatrixXd y = z - H_laser_ * x_;
+  
+  // Get total covariance
+  MatrixXd Ht = H_laser_.transpose();
+  MatrixXd S = H_laser_ * P_ * Ht + R_laser_;
+  MatrixXd Si = S.inverse();
 
   // Calculate Kalman gain
-  MatrixXd K = T * S.inverse();
-
-  // Calculate difference between predictions and measurements
-  VectorXd zDiff = meas_package.raw_measurements_ - zPred;
-  while(zDiff(1) > M_PI)
-    zDiff(1) -= 2.0*M_PI;
-  while(zDiff(1) < -M_PI)
-    zDiff(1) += 2.0*M_PI;
+  MatrixXd K = P_ * Ht * Si;
   
   // Update state and covariance
-  x_ = x_ + K * zDiff;
-  P_ = P_ - K * S * K.transpose();
-
+  x_ = x_ + K * y;
+  P_ = (I_laser_ - (K * H_laser_)) * P_;
 }
 
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
