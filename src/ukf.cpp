@@ -145,7 +145,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       double vy = rho_dot*sin(phi);
       double v = sqrt(vx*vx + vy*vy);
 
-      x_ << x, y, v, rho, rho_dot;
+      x_ << x, y, v, phi, 0;
     }
 
     // Otherwise, alert user that no information has been accepted
